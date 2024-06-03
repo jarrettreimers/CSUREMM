@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-class Stations:
+class Model:
     def __init__(self):
         self.stations_id = {}
         self.stations_count = {}
