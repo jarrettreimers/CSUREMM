@@ -17,3 +17,6 @@ def get_stations(data: pd.DataFrame) -> set:
 
 def select_start_station(data: pd.DataFrame, station_id: int) -> pd.DataFrame:
     return data.loc[data['start station id'] == station_id]
+
+def select_end_station(data: pd.DataFrame, station_id: int) -> pd.DataFrame:
+    return data.loc[data['end station id'] == station_id]
