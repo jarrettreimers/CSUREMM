@@ -14,7 +14,7 @@ def cut(df: DataFrame, start_time: datetime.datetime, stop_time: datetime.dateti
     return dfs
 
 
-def get_weekdays(start_date: datetime.datetime, stop_time: datetime.datetime) -> list[list[datetime.datetime]]:
+def get_weekdays_and_weekends(start_date: datetime.datetime, stop_time: datetime.datetime) -> list[list[datetime.datetime]]:
     weekdays = []
     weekends = []
     i = 0
