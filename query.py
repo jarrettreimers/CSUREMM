@@ -18,5 +18,18 @@ def get_stations(data: pd.DataFrame) -> set:
 def select_start_station(data: pd.DataFrame, station_id: int) -> pd.DataFrame:
     return data.loc[data['start station id'] == station_id]
 
+
 def select_end_station(data: pd.DataFrame, station_id: int) -> pd.DataFrame:
     return data.loc[data['end station id'] == station_id]
+
+
+def make_datetime(data: pd.DataFrame) -> pd.DataFrame:
+    start_times = []
+    for start_time in data['started_at']:
+        start_times.append(datetime.datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S"))
+    data['started_at'] = start_times
+    stop_times = []
+    for stop_time in data['ended_at']:
+        stop_times.append(datetime.datetime.strptime(stop_time, "%Y-%m-%d %H:%M:%S"))
+    data['ended_at'] = stop_times
+    return data
