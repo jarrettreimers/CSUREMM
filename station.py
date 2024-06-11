@@ -1,3 +1,13 @@
+import pandas as pd
+
+from trip import Trip
+
+
+def create_station(name: str, year: str) -> Station:
+    df = pd.read_csv(f'data/{year}/by_station/{name}.csv')
+    id = df['station_id'].iloc[0]
+
+
 class Station:
     def __init__(self,
                  name: str,
@@ -22,22 +32,26 @@ class Station:
         self.full = full
         self.rate = rate
         self.transition = transition
+        self.bad_arrivals = []
+        self.bad_departures = []
 
-    def get_bike(self):
+    def get_bike(self, trip: Trip) -> bool:
         if not self.empty:
             self.curr_bikes -= 1
             if self.curr_bikes == 0:
                 self.empty = True
             return True
+        self.bad_departures.append(trip)
         return False
 
-    def return_bike(self):
+    def return_bike(self, trip: Trip) -> bool:
         if not self.full:
             self.curr_bikes += 1
             if self.curr_bikes == self.max_docks:
                 self.full = True
             return True
+        self.bad_arrivals.append(trip)
         return False
 
-    def get_nearest_neighbor(self):
+    def get_nearest_neighbor(self) -> list:
         return self.nearest_neighbors
