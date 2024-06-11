@@ -3,9 +3,9 @@ import pandas as pd
 from trip import Trip
 
 
-def create_station(name: str, year: str) -> Station:
-    df = pd.read_csv(f'data/{year}/by_station/{name}.csv')
-    id = df['station_id'].iloc[0]
+# def create_station(name: str, year: str) -> Station:
+#     df = pd.read_csv(f'data/{year}/by_station/{name}.csv')
+#     id = df['station_id'].iloc[0]
 
 
 class Station:
@@ -16,8 +16,6 @@ class Station:
                  nearest_neighbors: list,
                  max_docks: int,
                  curr_bikes: int,
-                 full: bool,
-                 empty: bool,
                  rate: [float],
                  transition: [],
                  ):
@@ -28,8 +26,8 @@ class Station:
         self.nearest_neighbors = nearest_neighbors
         self.max_docks = max_docks
         self.curr_bikes = curr_bikes
-        self.empty = empty
-        self.full = full
+        self.empty = curr_bikes == 0
+        self.full = curr_bikes == max_docks
         self.rate = rate
         self.transition = transition
         self.bad_arrivals = []
@@ -55,3 +53,7 @@ class Station:
 
     def get_nearest_neighbor(self) -> list:
         return self.nearest_neighbors
+
+    def update(self):
+        self.empty = self.curr_bikes == 0
+        self.full = self.curr_bikes == self.max_docks
