@@ -1,11 +1,6 @@
 import pandas as pd
-
 from trip import Trip
 
-
-def create_station(name: str, year: str) -> Station:
-    df = pd.read_csv(f'data/{year}/by_station/{name}.csv')
-    id = df['station_id'].iloc[0]
 
 
 class Station:
