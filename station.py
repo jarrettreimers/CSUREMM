@@ -1,11 +1,6 @@
 import pandas as pd
-
+import parameter
 from trip import Trip
-
-
-def create_station(name: str, year: str) -> Station:
-    df = pd.read_csv(f'data/{year}/by_station/{name}.csv')
-    id = df['station_id'].iloc[0]
 
 
 class Station:
@@ -16,8 +11,6 @@ class Station:
                  nearest_neighbors: list,
                  max_docks: int,
                  curr_bikes: int,
-                 full: bool,
-                 empty: bool,
                  rate: [float],
                  transition: [],
                  ):
@@ -28,8 +21,6 @@ class Station:
         self.nearest_neighbors = nearest_neighbors
         self.max_docks = max_docks
         self.curr_bikes = curr_bikes
-        self.empty = empty
-        self.full = full
         self.rate = rate
         self.transition = transition
         self.bad_arrivals = []
@@ -52,6 +43,3 @@ class Station:
             return True
         self.bad_arrivals.append(trip)
         return False
-
-    def get_nearest_neighbor(self) -> list:
-        return self.nearest_neighbors
