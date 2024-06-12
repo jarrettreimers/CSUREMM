@@ -19,6 +19,7 @@ class Model:
         self.stations = stations
         self.in_transit = in_transit
         self.curr_time = 0
+        self.failures = 0
 
     def sim(self, time=1):
         """
@@ -31,8 +32,9 @@ class Model:
         for trip in self.in_transit:
             if trip.update(time):
                 if not self.stations[trip.end_station].return_bike(trip):
-                    print('Failure to dock') # TODO handle dock failure
-                    trip.print()
+                    # print('Failure to dock') # TODO handle dock failure
+                    self.failures += 1
+                    # trip.print()
             else:
                 transit.append(trip)
 
@@ -41,10 +43,11 @@ class Model:
             departures = poisson(station.rate[self.curr_time])
             end_trips = choice(self.station_list, departures, p=station.transition)
             for departure_name in end_trips:
-                trip = Trip(station_name, departure_name, station.neighbors_dist[departure_name])
+                trip = Trip(station_name, departure_name, station.neighbors_dist[departure_name], 1) # THIS NEEDS TO BE CHANGED
                 if not station.get_bike(trip):
-                    print('Failure to depart') # TODO handle departure failure
-                    trip.print()
+                    # print('Failure to depart') # TODO handle departure failure
+                    self.failures += 1
+                    # trip.print()
                 else:
                     transit.append(trip)
         self.in_transit = transit
