@@ -1,55 +1,102 @@
+from datetime import timedelta
 from typing import List
 
 from numpy.random import poisson, choice
 from station import Station
 from trip import Trip
 
+
 class Model:
     def __init__(self,
-                 station_list: [],
-                 stations: {str: Station},
-                 in_transit: List[Trip]
+                 station_names: [],
+                 stations_dict: {str: Station},
+                 in_transit: List[Trip],
+                 tph: int
                  ):
         """
-        :param station_list: Ordered list of stations - corresponds to transition vector prob from station to station
-        :param stations: Names of stations that point to Station objects
-        :param in_transit: List of trips in transit
+
+        :param station_names:
+        :param stations_dict:
+        :param in_transit:
+        :param tph:
         """
-        self.station_list = station_list
-        self.stations = stations
+        self.station_names = station_names
+        self.stations_dict = stations_dict
         self.in_transit = in_transit
-        self.curr_time = 0
+        self.tph = tph
+        self.curr_tick = 0
+        self.curr_time = timedelta(hours=0)
         self.failures = 0
 
-    def sim(self, time=1):
+    def sim(self):
         """
 
-        :param time: Timestep with length t, 24/t steps in a day
         :return:
         """
-        self.curr_time += time
-        transit = []
-        for trip in self.in_transit:
-            if trip.update(time):
-                if not self.stations[trip.end_station].return_bike(trip):
-                    # print('Failure to dock') # TODO handle dock failure
-                    self.failures += 1
-                    # trip.print()
-            else:
-                transit.append(trip)
-
-        for station_name in self.stations:
-            station = self.stations[station_name]
-            departures = poisson(station.rate[self.curr_time])
-            end_trips = choice(self.station_list, departures, p=station.transition)
-            for departure_name in end_trips:
-                trip = Trip(station_name, departure_name, station.neighbors_dist[departure_name], 1) # THIS NEEDS TO BE CHANGED
-                if not station.get_bike(trip):
-                    # print('Failure to depart') # TODO handle departure failure
-                    self.failures += 1
-                    # trip.print()
-                else:
-                    transit.append(trip)
+        self.curr_tick += 1
+        self.curr_time += timedelta(hours=1 / self.tph)
+        transit = self.sim_trips()
+        transit += self.sim_stations()
         self.in_transit = transit
 
+    def sim_trips(self) -> List[Trip]:
+        transit = []
+        for trip in self.in_transit:
+            # updates the time for each trip
+            if trip.update(timedelta(hours=1 / self.tph)):
+                # park the bike
+                if not self.stations_dict[trip.end_station].return_bike(trip):  # if there is no room...
+                    # print('Failure to dock') # TODO handle dock failure
+                    self.failures += 1
+                    new_destination = self.stations_dict[trip.end_station].neighbors_dist[0]  # go to closest station to proposed end
+                    new_trip = Trip(start_station=trip.end_station,
+                                    end_station=new_destination,
+                                    start_time=self.curr_time,
+                                    trip_time=self.stations_dict[trip.end_station].neighbors_dist[new_destination])
+                    transit.append(new_trip)
+            else:
+                transit.append(trip)
+        return transit
 
+    def sim_stations(self):
+        transit = []
+        for station in self.stations_dict.values():
+            departures = poisson(station.rate[self.curr_tick])
+            destinations = choice(station.neighbors_names, departures, p=station.transition[self.curr_tick])
+            for destination in destinations:
+                trip = Trip(start_station=station.name,
+                            end_station=destination,
+                            start_time=self.curr_time,
+                            trip_time=station.neighbors_dist[destination])
+                if not station.get_bike(trip):
+                    self.failures += 1
+                    # print('Failure to depart from ', station_name)
+                    # This all needs to be fixed to account for people that can't depart
+
+                    new_departure_pt = self.get_new_destination(trip)
+                    # print('Failure rerouted to: ', new_departure_pt)
+                    if new_departure_pt and not self.stations_dict[new_departure_pt].empty:
+                        # print(new_departure_pt, ' has a bike to use')
+                        new_trip = Trip(start_station=new_departure_pt,
+                                        end_station=trip.end_station,
+                                        start_time=self.curr_time,
+                                        trip_time=self.stations_dict[new_departure_pt].neighbors_dist[
+                                            trip.end_station])
+                        self.stations_dict[new_departure_pt].get_bike(new_trip)
+                        transit.append(new_trip)
+
+                else:
+                    transit.append(trip)
+            station.update()
+        return transit
+
+    def get_new_destination(self, trip: Trip) -> str:
+        new_departure_pt = self.stations_dict[trip.start_station].nearest_neighbors[0]
+        i = 0
+        while self.stations_dict[new_departure_pt].empty:
+            i += 1
+            if i == 4:
+                new_departure_pt = ''
+                break
+            new_departure_pt = self.stations_dict[trip.start_station].nearest_neighbors[i]
+        return new_departure_pt

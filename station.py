@@ -2,23 +2,23 @@ import pandas as pd
 from trip import Trip
 
 
-
 class Station:
     def __init__(self,
                  name: str,
                  id: float,
                  neighbors_dist: dict,
-                 nearest_neighbors: list,
+                 neighbors_names: list,
                  max_docks: int,
                  curr_bikes: int,
-                 rate: [float],
-                 transition: [],
+                 rate: list[float],
+                 transition: list[dict],
                  ):
 
         self.name = name
         self.id = id
         self.neighbors_dist = neighbors_dist
-        self.nearest_neighbors = nearest_neighbors
+        self.neighbors_names = neighbors_names
+        self.nearest_neighbors = sorted(neighbors_dist, key=neighbors_dist.get)
         self.max_docks = max_docks
         self.curr_bikes = curr_bikes
         self.empty = curr_bikes == 0
@@ -35,6 +35,7 @@ class Station:
                 self.empty = True
             return True
         self.bad_departures.append(trip)
+        self.update()
         return False
 
     def return_bike(self, trip: Trip) -> bool:
@@ -44,7 +45,9 @@ class Station:
                 self.full = True
             return True
         self.bad_arrivals.append(trip)
+        self.update()
         return False
 
-    def get_nearest_neighbor(self) -> list:
-        return self.nearest_neighbors
+    def update(self):
+        self.empty = self.curr_bikes == 0
+        self.full = self.curr_bikes == self.max_docks
