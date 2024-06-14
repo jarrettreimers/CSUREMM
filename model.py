@@ -14,9 +14,8 @@ class Model:
                  tph: int
                  ):
         """
-
         :param station_names:
-        :param stations_dict:
+        :param stations_dict
         :param in_transit:
         :param tph:
         """
@@ -35,6 +34,8 @@ class Model:
         """
         self.curr_tick += 1
         self.curr_time += timedelta(hours=1 / self.tph)
+        if self.curr_tick % 24 == 0:
+            self.curr_tick = 0
         transit = self.sim_trips()
         transit += self.sim_stations()
         self.in_transit = transit
@@ -45,15 +46,16 @@ class Model:
             # updates the time for each trip
             if trip.update(timedelta(hours=1 / self.tph)):
                 # park the bike
-                if not self.stations_dict[trip.end_station].return_bike(trip):  # if there is no room...
+                if trip.end_station in self.stations_dict and not self.stations_dict[trip.end_station].return_bike(trip):  # if there is no room...
                     # print('Failure to dock') # TODO handle dock failure
                     self.failures += 1
-                    new_destination = self.stations_dict[trip.end_station].neighbors_dist[0]  # go to closest station to proposed end
-                    new_trip = Trip(start_station=trip.end_station,
-                                    end_station=new_destination,
-                                    start_time=self.curr_time,
-                                    trip_time=self.stations_dict[trip.end_station].neighbors_dist[new_destination])
-                    transit.append(new_trip)
+                    new_destination = self.get_new_station(self.stations_dict[trip.end_station])  # go to closest station to proposed end
+                    if new_destination in self.stations_dict[trip.end_station].neighbors_dist:
+                        new_trip = Trip(start_station=trip.end_station,
+                                        end_station=new_destination,
+                                        start_time=self.curr_time,
+                                        trip_time=self.stations_dict[trip.end_station].neighbors_dist[new_destination])
+                        transit.append(new_trip)
             else:
                 transit.append(trip)
         return transit
@@ -73,30 +75,26 @@ class Model:
                     # print('Failure to depart from ', station_name)
                     # This all needs to be fixed to account for people that can't depart
 
-                    new_departure_pt = self.get_new_destination(trip)
+                    new_departure_pt = self.get_new_station(station)
                     # print('Failure rerouted to: ', new_departure_pt)
                     if new_departure_pt and not self.stations_dict[new_departure_pt].empty:
                         # print(new_departure_pt, ' has a bike to use')
-                        new_trip = Trip(start_station=new_departure_pt,
-                                        end_station=trip.end_station,
-                                        start_time=self.curr_time,
-                                        trip_time=self.stations_dict[new_departure_pt].neighbors_dist[
-                                            trip.end_station])
-                        self.stations_dict[new_departure_pt].get_bike(new_trip)
-                        transit.append(new_trip)
-
+                        trip.end_station = new_departure_pt
+                        # new_trip = Trip(start_station=new_departure_pt,
+                        #                 end_station=trip.end_station,
+                        #                 start_time=self.curr_time,
+                        #                 trip_time=self.stations_dict[new_departure_pt].neighbors_dist[
+                        #                     trip.end_station])
+                        self.stations_dict[new_departure_pt].get_bike(trip)
+                        transit.append(trip)
                 else:
                     transit.append(trip)
             station.update()
         return transit
 
-    def get_new_destination(self, trip: Trip) -> str:
-        new_departure_pt = self.stations_dict[trip.start_station].nearest_neighbors[0]
-        i = 0
-        while self.stations_dict[new_departure_pt].empty:
-            i += 1
-            if i == 4:
-                new_departure_pt = ''
-                break
-            new_departure_pt = self.stations_dict[trip.start_station].nearest_neighbors[i]
-        return new_departure_pt
+    def get_new_station(self, station: Station) -> str:
+        nearest_neighbors = station.nearest_neighbors
+        for neighbor in nearest_neighbors[:5]:
+            if neighbor in self.stations_dict and not self.stations_dict[neighbor].empty:
+                return neighbor
+        return ''
