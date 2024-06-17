@@ -11,6 +11,8 @@ class Station:
                  curr_bikes: int,
                  rate: list[float],
                  transition: list[dict],
+                 lat: float,
+                 lon: float,
                  ):
 
         self.name = name
@@ -26,6 +28,8 @@ class Station:
         self.transition = transition
         self.bad_arrivals = []
         self.bad_departures = []
+        self.lat = lat
+        self.lon = lon
 
     def get_bike(self, trip: Trip) -> bool:
         if not self.empty:
@@ -48,5 +52,15 @@ class Station:
         return False
 
     def update(self):
-        self.empty = self.curr_bikes == 0
-        self.full = self.curr_bikes == self.max_docks
+        self.empty = self.curr_bikes <= 0
+        self.full = self.curr_bikes >= self.max_docks
+
+    def refine_by_3(self):
+        new_rate = []
+        new_transition = []
+        for i in range(len(self.rate) - 1):
+            new_rate += ([self.rate[i], 2/3*self.rate[i] + 1/3*self.rate[i + 1], 1/3*self.rate[i] + 2/3*self.rate[i + 1]])
+        self.rate = new_rate
+        for i in range(len(self.transition)):
+            new_transition += [self.transition[i]]*3
+        self.transition = new_transition
