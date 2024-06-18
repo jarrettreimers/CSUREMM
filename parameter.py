@@ -185,6 +185,7 @@ def get_station_information(save=False):
                     'num_bikes_disabled': station_stat['num_bikes_disabled'],
                     'num_docks_available': station_stat['num_docks_available'],
                     'num_docks_disabled': station_stat['num_docks_disabled'],
+                    'operating': station_stat['is_renting'] and station_stat['is_returning'] and station_stat['is_installed'],
                 }
                 flat_data.append(flat_station)
                 break
