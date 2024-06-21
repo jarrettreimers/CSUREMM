@@ -1,4 +1,5 @@
 import os.path
+import time
 import urllib.request, simplejson
 from datetime import datetime, timedelta
 import pandas as pd
@@ -45,8 +46,11 @@ def get_rate(data: pd.DataFrame, days: list[datetime], tph: int) -> np.array:
     return total_arrivals
 
 
-def get_transition(data: pd.DataFrame, days: list[datetime], tph: int, truncate=False, whitelist=None) -> tuple[
-    list, list[dict[str, float]]]:
+def get_transition(data: pd.DataFrame, days: list[datetime], tph: int, truncate=False, whitelist=None) -> \
+        tuple[list, list[dict[str, float]]]:
+    if not len(data):
+        print
+        return [], []
     length = timedelta(hours=1 / tph)
     if whitelist is None:
         unique_stations = data['end_station_name'].unique()  # get all unique stations
@@ -100,11 +104,13 @@ def get_station(station: str, station_information: pd.DataFrame, start_date: dat
     if (end_date.year - start_date.year) != 0:
         print('Error, dates must be in same year!')
         return None
-    data = pd.read_csv(f'data/2023/by_station/{station}.csv', low_memory=False, index_col=0)
+    now = time.time()
+    data = pd.read_csv(f'data/{start_date.year}/by_station/{station}.csv', low_memory=False, index_col=0)
     data.dropna(axis="rows", inplace=True)
     data = query.make_datetime(data)
     days = get_weekdays_and_weekends(start_date=start_date, end_date=end_date)
     data = query.select_time(data, start_date, end_date)
+    print(len(data), 'rows loaded in', time.time() - now, 'seconds')
 
     if weekday:
         days = days[0]
@@ -121,6 +127,8 @@ def get_station(station: str, station_information: pd.DataFrame, start_date: dat
     max_docks = station_information.loc[station_information['name'] == station]['capacity'].values[0]
     lat = station_information.loc[station_information['name'] == station]['lat'].values[0]
     lon = station_information.loc[station_information['name'] == station]['lon'].values[0]
+
+    print(f'Loaded {station} in {time.time() - now} seconds')
 
     return Station(name=station,
                    id=0,
@@ -185,7 +193,8 @@ def get_station_information(save=False):
                     'num_bikes_disabled': station_stat['num_bikes_disabled'],
                     'num_docks_available': station_stat['num_docks_available'],
                     'num_docks_disabled': station_stat['num_docks_disabled'],
-                    'operating': station_stat['is_renting'] and station_stat['is_returning'] and station_stat['is_installed'],
+                    'operating': station_stat['is_renting'] and station_stat['is_returning'] and station_stat[
+                        'is_installed'],
                 }
                 flat_data.append(flat_station)
                 break

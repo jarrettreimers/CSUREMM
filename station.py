@@ -10,7 +10,7 @@ class Station:
                  max_docks: int,
                  curr_bikes: int,
                  rate: list[float],
-                 transition: list[list[float]],
+                 transition: list[dict[str: float]],
                  lat: float,
                  lon: float,
                  ):
@@ -90,3 +90,8 @@ class Station:
                     total_prob += self.transition[i][j]
                     self.transition[i][j] = 0
             self.transition[i] = [p / (1 - total_prob) for p in self.transition[i]]
+
+    def cluster(self, square_length: float):
+        for neighbor in self.neighbors_names:
+            if self.neighbors_dist[neighbor] < square_length:
+                self.remove_neighbor(neighbor)

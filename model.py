@@ -1,6 +1,7 @@
 from datetime import timedelta
 from typing import List
 
+from math import floor
 from numpy.random import poisson, choice
 import pandas as pd
 import numpy as np
@@ -38,6 +39,7 @@ class Model:
         self.failures = 0
         self.total_trips = 0
         self.critical_failures = 0
+        self.clusters = []
 
     def sim(self):
         """
@@ -123,11 +125,18 @@ class Model:
         for station in self.stations_dict:
             self.stations_dict[station].curr_bikes = df.loc[df['name'] == station, 'num_bikes_available'].values[0]
 
-    def mean_sq_error(self, other_stations: {str: Station}):
+    def mean_sq_error(self, stations_dict=None, other_stations=None, path=None):
+        if other_stations is None and path is None:
+            print("No comparison stations provided")
+            return
+        if other_stations is None:
+            other_stations = get_state(path)
+        if stations_dict is None:
+            stations_dict = self.stations_dict
         error = 0
-        for station in self.stations_dict:
-            error += (self.stations_dict[station].curr_bikes - other_stations[station].curr_bikes) ** 2
-        return error / len(self.stations_dict)
+        for station in stations_dict:
+            error += (stations_dict[station].curr_bikes - other_stations[station].curr_bikes) ** 2
+        return error / len(stations_dict)
 
     def remove_station(self, station_name: str):
         self.stations_dict.pop(station_name)
@@ -137,3 +146,66 @@ class Model:
     def truncate_transitions(self):
         for station in self.stations_dict.values():
             station.truncate_transition()
+
+    def cluster_stations(self, square_length: float):
+        lat_min = np.inf
+        lat_max = -np.inf
+        lon_min = np.inf
+        lon_max = -np.inf
+        for station in self.stations_dict.values():
+            if station.lat < lat_min:
+                lat_min = station.lat
+            if station.lat > lat_max:
+                lat_max = station.lat
+            if station.lon < lon_min:
+                lon_min = station.lon
+            if station.lon > lon_max:
+                lon_max = station.lon
+        vertical_squares = int((lat_max - lat_min) / square_length) + 1
+        horizontal_squares = int((lon_max - lon_min) / square_length) + 1
+        squares = horizontal_squares * vertical_squares
+        print(
+            f'{horizontal_squares} horizontal squares and {vertical_squares} vertical squares. Total squares: {squares}')
+        self.clusters = [[] for square in range(squares)]
+        for station in self.stations_dict.values():
+            x = floor((station.lon - lon_min) / square_length)
+            y = -floor((station.lat - lat_min) / square_length) - 1
+            self.clusters[x + y * horizontal_squares].append(station.name)
+
+        return horizontal_squares, vertical_squares, self.clusters
+
+    def get_num_bikes_in_clusters(self):
+        bike_cluster = []
+        for cluster in self.clusters:
+            num_bikes = 0
+            for station in cluster:
+                num_bikes += self.stations_dict[station].curr_bikes
+            bike_cluster.append(num_bikes)
+        return bike_cluster
+
+    def get_num_open_docks_in_clusters(self):
+        dock_cluster = []
+        for cluster in self.clusters:
+            num_docks = 0
+            for station in self.clusters[cluster]:
+                num_docks += self.stations_dict[station].max_docks - self.stations_dict[station].curr_bikes
+            dock_cluster.append(num_docks)
+        return dock_cluster
+
+
+def get_state(path: str) -> {str: Station}:
+    df = pd.read_csv(path)
+    stations_dict = {}
+    for i in range(len(df)):
+        stations_dict[df.loc[i, 'name']] = (
+            Station(name=df.loc[i, 'name'],
+                    lat=df.loc[i, 'lat'],
+                    lon=df.loc[i, 'lon'],
+                    max_docks=df.loc[i, 'capacity'],
+                    curr_bikes=df.loc[i, 'num_bikes_available'],
+                    rate=[],
+                    transition=[],
+                    id=0,
+                    neighbors_dist={},
+                    neighbors_names=[]))
+    return stations_dict

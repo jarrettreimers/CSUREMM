@@ -1,5 +1,7 @@
+import time
 import pandas as pd
 import datetime
+from station import Station
 
 
 def get_datetime(year, month, day, hour, minute, second) -> datetime.datetime:
@@ -8,7 +10,7 @@ def get_datetime(year, month, day, hour, minute, second) -> datetime.datetime:
 
 def select_time(data: pd.DataFrame, start_time: datetime.datetime,
                 end_time: datetime.datetime) -> pd.DataFrame:
-    return data.loc[data['started_at'] >= start_time].loc[data['started_at'] <= end_time]
+    return data.loc[data['started_at'] >= start_time].loc[data['ended_at'] <= end_time]
 
 
 def get_stations(data: pd.DataFrame) -> set:
@@ -24,12 +26,8 @@ def select_end_station(data: pd.DataFrame, station_id: int) -> pd.DataFrame:
 
 
 def make_datetime(data: pd.DataFrame) -> pd.DataFrame:
-    start_times = []
-    for start_time in data['started_at']:
-        start_times.append(datetime.datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S"))
-    data['started_at'] = start_times
-    stop_times = []
-    for stop_time in data['ended_at']:
-        stop_times.append(datetime.datetime.strptime(stop_time, "%Y-%m-%d %H:%M:%S"))
-    data['ended_at'] = stop_times
+    data['started_at'] = pd.to_datetime(data['started_at'])
+    data['ended_at'] = pd.to_datetime(data['ended_at'])
     return data
+
+
