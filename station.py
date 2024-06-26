@@ -86,7 +86,7 @@ class Station:
         for i in range(len(self.transition)):
             total_prob = 0
             for j in range(len(self.transition[i])):
-                if 0 < self.transition[i][j] < uniform_prob/2:
+                if 0 < self.transition[i][j] < uniform_prob:
                     total_prob += self.transition[i][j]
                     self.transition[i][j] = 0
             self.transition[i] = [p / (1 - total_prob) for p in self.transition[i]]
