@@ -86,6 +86,8 @@ class Model:
             departures = poisson(station.rate[self.curr_tick])
             destinations = choice(station.neighbors_names, departures, p=station.transition[self.curr_tick])
             for destination in destinations:
+                if destination not in self.stations_dict:
+                    destination = self.get_new_station(station)
                 trip = Trip(start_station=station.name,
                             end_station=destination,
                             start_time=self.curr_time,
@@ -144,8 +146,24 @@ class Model:
             self.stations_dict[station].remove_neighbor(station_name)
 
     def truncate_transitions(self):
+        done = 0
+        total = len(self.stations_dict)
         for station in self.stations_dict.values():
             station.truncate_transition()
+            done += 1
+            if done % 100 == 0:
+                print(f'{done} of {total} done')
+        print('Stations truncated')
+
+    def refine_by_3(self):
+        done = 0
+        total = len(self.stations_dict)
+        for station in self.stations_dict.values():
+            station.refine_by_3()
+            done += 1
+            if done % 100 == 0:
+                print(f'{done} of {total} done')
+        print('Stations refined')
 
     def cluster_stations(self, square_length: float):
         lat_min = np.inf

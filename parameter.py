@@ -9,6 +9,7 @@ import pickle
 from station import Station
 
 
+
 def cut(df: pd.DataFrame, start_time: datetime, stop_time: datetime, length: timedelta) \
         -> list[pd.DataFrame]:
     total_length = stop_time - start_time
