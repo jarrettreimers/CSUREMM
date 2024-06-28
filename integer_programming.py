@@ -1,6 +1,8 @@
 import gurobipy as gp
 from gurobipy import GRB
 import numpy as np
+import matplotlib.pyplot as plt
+import networkx as nx
 
 def create_model(T, K, L, stations, start_levels, optimal_levels, positions, neighbors):
     over_stations, under_stations, balanced_stations = [], [], []
@@ -101,3 +103,72 @@ def create_model(T, K, L, stations, start_levels, optimal_levels, positions, nei
     model.addConstr(gp.quicksum(b[1, k] for k in range(1, K+1)) == 0)
 
     return model
+
+
+
+
+def graph_model(model):
+    truck_paths = {}
+    
+    # if model.status == GRB.OPTIMAL:
+    if True:
+        for k in range(1, K+1):
+            path = []
+            for t in range(1, T+1):
+                for s in stations:
+                    if x[s, t, k].x > 0.5:  # If the truck k is at station s at time t
+                        path.append((t, s, '{} bikes'.format(int(b[t,k].x))))
+                        break
+            truck_paths[k] = path
+            print(f"Truck {k} path: {path}")
+    else:
+        print("No optimal solution found.")
+    
+    
+    # Visualize the truck paths
+    def plot_paths(truck_paths):
+        G = nx.DiGraph()
+        
+        # num_stations = len(stations)
+        # side_length = int(np.ceil(np.sqrt(num_stations)))  # Number of nodes along one side of the square
+        
+        # # Determine the step size to spread nodes evenly in the square
+        # step = 2 / (side_length - 1)
+        
+        # # Generate positions for each node
+        # pos = {stations[i]: ((i % side_length) * step - 1, (i // side_length) * step - 1) for i in range(num_stations)}
+        
+        # Add nodes
+        for station in stations:
+            G.add_node(station)
+        
+        # Add edges with arrows for each truck path
+        for k, path in truck_paths.items():
+            for i in range(len(path) - 1):
+                t1, s1 = path[i][:2]
+                t2, s2 = path[i + 1][:2]
+                G.add_edge(s1, s2, truck=k, time_step=t1)
+        
+        edge_colors = ['blue', 'red', 'green', 'purple']  # Different colors for different trucks
+        # edge_styles = ['solid', 'dashed']  # Different styles for different trucks
+        
+        plt.figure(figsize=(10, 8))
+        for k, path in truck_paths.items():
+            # edges = [(path[i][1], path[i + 1][1]) for i in range(len(path) - 1)]
+            # The above includes time steps where the trucks don't move. Below I have removed such trips
+            edges = [(path[i][1], path[i + 1][1]) for i in range(len(path) - 1) if path[i][1] != path[i + 1][1]]
+            nx.draw_networkx_edges(G, positions, edgelist=edges, arrowstyle='->', arrowsize=15, 
+                                   edge_color=edge_colors[k - 1], style='dashed', label=f'Truck {k}')
+        
+        nx.draw_networkx_nodes(G, positions, node_size=500, node_color='lightgray')
+        nx.draw_networkx_labels(G, positions, font_size=10)
+    
+        from matplotlib.lines import Line2D
+        legend_handles = [Line2D([0], [0], color=edge_colors[k - 1], lw=2, label=f'Truck {k}') for k in range(1, K+1)]
+        plt.legend(handles=legend_handles)
+        
+        plt.title("Truck Paths")
+        plt.show()
+    
+    # Plot the paths
+    plot_paths(truck_paths)
