@@ -101,7 +101,7 @@ class Model:
                     # print('Failure rerouted to: ', new_departure_pt)
                     if new_departure_pt and not self.stations_dict[new_departure_pt].empty:
                         # print(new_departure_pt, ' has a bike to use')
-                        trip.end_station = new_departure_pt
+                        trip.start_station = new_departure_pt
                         self.stations_dict[new_departure_pt].get_bike(trip)
                         transit.append(trip)
                 else:
