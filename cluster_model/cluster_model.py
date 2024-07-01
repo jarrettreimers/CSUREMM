@@ -90,16 +90,16 @@ class ClusterModel:
         transit = []
         for cluster in self.cluster_dict.values():
             if self.curr_tick % 3 == 0:
-                rate = cluster.rate[int(self.curr_tick/3)]
+                rate = cluster.rate[int(self.curr_tick / 3) - 1] / 3
             elif self.curr_tick % 3 == 1:
-                rate = [cluster.rate[int(self.curr_tick / 3) - 1] * 1 / 3,
-                        cluster.rate[int(self.curr_tick / 3)] * 2 / 3]
+                rate = (cluster.rate[int(self.curr_tick / 3) - 1] * 2 / 3 +
+                        cluster.rate[int(self.curr_tick / 3)] * 1 / 3) / 3
             else:
-                rate = [cluster.rate[int(self.curr_tick / 3) - 1] * 2 / 3,
-                        cluster.rate[int(self.curr_tick / 3)] * 1 / 3]
-            departures = poisson(cluster.rate[self.curr_tick])
-            transition_values = list(cluster.transition[self.curr_tick].values())
-            transition_keys = np.array(list(cluster.transition[self.curr_tick].keys()))
+                rate = (cluster.rate[int(self.curr_tick / 3) - 1] * 1 / 3 +
+                        cluster.rate[int(self.curr_tick / 3)] * 2 / 3) / 3
+            departures = poisson(rate)
+            transition_values = list(cluster.transition[int(self.curr_tick / 3)].values())
+            transition_keys = np.array(list(cluster.transition[int(self.curr_tick / 3)].keys()))
             try:
                 destinations = choice(transition_keys, departures, p=transition_values)
             except ValueError:
@@ -108,12 +108,19 @@ class ClusterModel:
             transit += (self.sim_departures(cluster, destinations))
         return transit
 
-    def sim_by_3(self):
+    def init_by_3(self):
         self.tph = 12
         self.curr_tick *= 3
-        self.curr_time = timedelta(hours=self.curr_tick / self.tph)
+
+    def sim_by_3(self):
+        self.curr_tick += 1
+        self.curr_time += timedelta(hours=1 / self.tph)
+        if self.curr_tick % (24 * self.tph) == 0:
+            self.curr_tick = 0
         transit = self.sim_trips()
         transit += self.sim_clusters_by_3()
+        self.in_transit = transit
+
     def sim_departures(self, cluster: StationCluster, destinations: list[int]) -> List[Trip]:
         transit = []
         if destinations is None:
@@ -365,7 +372,7 @@ class ClusterModel:
         if not name:
             name = str(self.curr_time.total_seconds())
         if save:
-            plt.savefig('images/num_bikes/' + name + '.png')
+            plt.savefig('images/bikes/' + name + '.png')
         return fig
 
     def get_max_docks_in_clusters(self) -> np.ndarray:
