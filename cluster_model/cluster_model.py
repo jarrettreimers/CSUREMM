@@ -57,8 +57,8 @@ class ClusterModel:
                     # print('Failure to dock')
                     self.failures += 1
                     new_destination = self.get_new_cluster(cluster=end_cluster, method='arrival')
-                    if new_destination:
-                        distance = self.get_dist(end_cluster, self.cluster_dict[new_destination])
+                    if new_destination > -1:
+                        distance = self.get_dist(end_cluster, new_destination)
                         new_trip = Trip(start_cluster=trip.end_cluster,
                                         end_cluster=new_destination,
                                         start_time=self.curr_time,
@@ -72,7 +72,7 @@ class ClusterModel:
                 transit.append(trip)
         return transit
 
-    def sim_clusters(self):
+    def sim_clusters(self) -> List[Trip]:
         transit = []
         for cluster in self.cluster_dict.values():
             departures = poisson(cluster.rate[self.curr_tick])
@@ -83,57 +83,92 @@ class ClusterModel:
             except ValueError:
                 print('Error in choice', cluster.name, departures, sum(transition_values), len(transition_keys))
                 destinations = []
-            for destination in destinations:
-                if destination not in self.cluster_dict:
-                    print(destination, 'Destination not in cluster_dict')
-                    continue
-                if self.cluster_dict[destination].full:
-                    self.failures += 1
-                    # print('Failure to arrive at ', station_name)
-                    destination = self.get_new_cluster(cluster=destination, method='departure')
-                if not destination:
-                    self.critical_failures += 1
-                    continue
-                trip = Trip(start_cluster=cluster.name,
-                            end_cluster=destination,
-                            start_time=self.curr_time,
-                            trip_time=self.get_dist(destination, self.cluster_dict[destination]))
-                if not cluster.get_bike(trip):
-                    self.failures += 1
-                    # print('Failure to depart from ', station_name)
-                    new_departure_pt = self.get_new_cluster(cluster.name)
-                    # print('Failure rerouted to: ', new_departure_pt)
-                    if new_departure_pt and self.cluster_dict[new_departure_pt].get_bike(trip):
-                        # print(new_departure_pt, ' has a bike to use')
-                        trip.start_station = new_departure_pt
-                        transit.append(trip)
-                    else:
-                        # print('No bikes available at ', new_departure_pt)
-                        self.critical_failures += 1
-                else:
+            transit += (self.sim_departures(cluster, destinations))
+        return transit
+
+    def sim_clusters_by_3(self) -> List[Trip]:
+        transit = []
+        for cluster in self.cluster_dict.values():
+            if self.curr_tick % 3 == 0:
+                rate = cluster.rate[int(self.curr_tick/3)]
+            elif self.curr_tick % 3 == 1:
+                rate = [cluster.rate[int(self.curr_tick / 3) - 1] * 1 / 3,
+                        cluster.rate[int(self.curr_tick / 3)] * 2 / 3]
+            else:
+                rate = [cluster.rate[int(self.curr_tick / 3) - 1] * 2 / 3,
+                        cluster.rate[int(self.curr_tick / 3)] * 1 / 3]
+            departures = poisson(cluster.rate[self.curr_tick])
+            transition_values = list(cluster.transition[self.curr_tick].values())
+            transition_keys = np.array(list(cluster.transition[self.curr_tick].keys()))
+            try:
+                destinations = choice(transition_keys, departures, p=transition_values)
+            except ValueError:
+                print('Error in choice', cluster.name, departures, sum(transition_values), len(transition_keys))
+                destinations = []
+            transit += (self.sim_departures(cluster, destinations))
+        return transit
+
+    def sim_by_3(self):
+        self.tph = 12
+        self.curr_tick *= 3
+        self.curr_time = timedelta(hours=self.curr_tick / self.tph)
+        transit = self.sim_trips()
+        transit += self.sim_clusters_by_3()
+    def sim_departures(self, cluster: StationCluster, destinations: list[int]) -> List[Trip]:
+        transit = []
+        if destinations is None:
+            destinations = []
+        for destination in destinations:
+            if destination not in self.cluster_dict:
+                print(destination, 'Destination not in cluster_dict')
+                continue
+            if self.cluster_dict[destination].full:
+                self.failures += 1
+                # print('Failure to arrive at ', station_name)
+                destination = self.get_new_cluster(cluster=destination, method='arrival')
+            if destination < 0:
+                self.critical_failures += 1
+                continue
+            trip = Trip(start_cluster=cluster.name,
+                        end_cluster=destination,
+                        start_time=self.curr_time,
+                        trip_time=self.get_dist(cluster.name, destination))
+            if not cluster.get_bike(trip):
+                self.failures += 1
+                # print('Failure to depart from ', station_name)
+                new_departure_pt = self.get_new_cluster(cluster.name, method='departure')
+                # print('Failure rerouted to: ', new_departure_pt)
+                if new_departure_pt >= 0 and self.cluster_dict[new_departure_pt].get_bike(trip):
+                    # print(new_departure_pt, ' has a bike to use')
+                    trip.start_station = new_departure_pt
                     transit.append(trip)
+                else:
+                    # print('No bikes available at ', new_departure_pt)
+                    self.critical_failures += 1
+            else:
+                transit.append(trip)
         return transit
 
     def get_dist(self, start_cluster: int, end_cluster: int) -> timedelta:
         start_cluster = self.cluster_dict[start_cluster]
         if end_cluster in start_cluster.neighbors_dist:
             return start_cluster.neighbors_dist[end_cluster]
-        # minutes = np.sqrt(
-        #     (start_cluster.lat - end_cluster.lat) ** 2 + (start_cluster.lon - end_cluster.lon) ** 2) * 428 + 5
-        minutes = 12
+        end_cluster = self.cluster_dict[end_cluster]
+        minutes = np.sqrt(
+            (start_cluster.lat - end_cluster.lat) ** 2 + (start_cluster.lon - end_cluster.lon) ** 2) * 428 + 5
         return timedelta(minutes=minutes)
 
-    def get_new_cluster(self, cluster: int, method='arrival'):
+    def get_new_cluster(self, cluster: int, method='arrival') -> int:
         nearest_neighbors = self.cluster_dict[cluster].nearest_neighbors
         random_range = [i for i in range(4)]
         random.shuffle(random_range)
         for num in random_range:
             neighbor = nearest_neighbors[num]
-            if method == 'arrival' and not self.cluster_dict[neighbor].empty:
+            if method == 'arrival' and not self.cluster_dict[neighbor].full:
                 return neighbor
-            elif method == 'departure' and not self.cluster_dict[neighbor].full:
+            elif method == 'departure' and not self.cluster_dict[neighbor].empty:
                 return neighbor
-        return None
+        return -1
 
     def change_time(self, time: timedelta):
         self.curr_time = time
@@ -192,6 +227,7 @@ class ClusterModel:
         print('StationClusters truncated')
 
     def cluster_stations(self, square_length: float):
+        # Create clusters based on square_length and station lat/lon
         lat_min = np.inf
         lat_max = -np.inf
         lon_min = np.inf
@@ -212,12 +248,15 @@ class ClusterModel:
         print(f'{self.horizontal_squares} horizontal squares and '
               f'{self.vertical_squares} vertical squares. Total squares: {squares}')
         self.clusters = [[] for _ in range(squares)]
+
+        # Put each station in a cluster
         for station_name in self.station_data:
             station = self.station_data[station_name]
             x = floor((station['lon'] - lon_min) / square_length)
             y = -floor((station['lat'] - lat_min) / square_length) - 1
             self.clusters[x + y * self.horizontal_squares].append(station_name)
 
+        # Create a tuple of the lat, lon centroid for each cluster
         lat = lat_max - square_length / 2
         for i in range(self.vertical_squares):
             lon = lat_min + square_length / 2
@@ -231,10 +270,10 @@ class ClusterModel:
     def init_clusters(self, square_length=0.005):
         if not self.clusters:
             self.cluster_stations(square_length)
+            self.station_clusters = {station: i for i in range(len(self.clusters)) for station in self.clusters[i]}
         if not self.station_clusters:
             self.station_clusters = {station: i for i in range(len(self.clusters)) for station in self.clusters[i]}
-        for i in range(len(self.clusters)):
-            cluster = self.clusters[i]
+        for i, cluster in zip(range(len(self.clusters)), self.clusters):
             if cluster:
                 rate = [0 for i in range(24 * 4)]
                 max_docks = 0
@@ -242,7 +281,7 @@ class ClusterModel:
                 neighbors_dist = {}
                 for station in cluster:
                     max_docks += self.station_data[station]['max_docks']
-                    for end_station in self.station_data[station]['dist']:
+                    for end_station in self.station_data[station]['dist']:  # Get the nearest neighbor for each station
                         if end_station in neighbors_dist:
                             if self.station_data[station]['dist'][end_station] < neighbors_dist[end_station]:
                                 neighbors_dist[end_station] = self.station_data[station]['dist'][end_station]
@@ -261,7 +300,7 @@ class ClusterModel:
                 for tick in range(24 * 4):
                     for end_station in transition[tick]:
                         transition[tick][end_station] /= rate[tick]
-                cluster_transition = self.get_cluster_transition(transition, cluster)
+                cluster_transition = self.get_cluster_transition(transition, i)
                 cluster_dist = {}
                 for station in neighbors_dist:
                     if station not in self.station_data:
@@ -300,7 +339,7 @@ class ClusterModel:
                     cluster_transition[tick][end_cluster] /= prob_total
         return cluster_transition
 
-    def get_num_open_docks_in_clusters(self):
+    def get_num_open_docks_in_clusters(self) -> List[int]:
         dock_cluster = []
         for cluster in self.clusters:
             num_docks = 0
@@ -318,7 +357,7 @@ class ClusterModel:
                 num_bikes.append(0)
         return np.array(num_bikes).reshape((self.vertical_squares, self.horizontal_squares))
 
-    def show_bikes(self, save=False, name=None):
+    def show_bikes(self, save=False, name=None) -> sns.heatmap:
         plt.close()
         bikes = self.get_num_bikes_in_clusters()
         fig = sns.heatmap(bikes, cmap='Reds', vmin=0, vmax=250)
@@ -338,13 +377,13 @@ class ClusterModel:
                 num_docks.append(0)
         return np.array(num_docks).reshape((self.vertical_squares, self.horizontal_squares))
 
-    def get_fill_percent(self):
+    def get_fill_percent(self) -> np.ndarray:
         num_bikes = self.get_num_bikes_in_clusters()
         num_docks = self.get_max_docks_in_clusters()
         num_docks[num_docks == 0] = 1
         return num_bikes / num_docks
 
-    def show_fill_percent(self, save=False, name=None):
+    def show_fill_percent(self, save=False, name=None) -> sns.heatmap:
         plt.close()
         fill = self.get_fill_percent()
         fig = sns.heatmap(fill, cmap='Reds', vmin=0, vmax=1)
