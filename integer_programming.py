@@ -102,12 +102,12 @@ def create_model(T, K, L, stations, start_levels, optimal_levels, positions, nei
     model.addConstr(gp.quicksum(b[T, k] for k in range(1, K+1)) == 0)
     model.addConstr(gp.quicksum(b[1, k] for k in range(1, K+1)) == 0)
 
-    return model
+    model.optimize()
+    model.update()
+    
+    return model, x, y, b
 
-
-
-
-def graph_model(model):
+def graph_model(x, b, K, T, stations, positions):
     truck_paths = {}
     
     # if model.status == GRB.OPTIMAL:
@@ -120,7 +120,7 @@ def graph_model(model):
                         path.append((t, s, '{} bikes'.format(int(b[t,k].x))))
                         break
             truck_paths[k] = path
-            print(f"Truck {k} path: {path}")
+            # print(f"Truck {k} path: {path}")
     else:
         print("No optimal solution found.")
     
@@ -128,15 +128,6 @@ def graph_model(model):
     # Visualize the truck paths
     def plot_paths(truck_paths):
         G = nx.DiGraph()
-        
-        # num_stations = len(stations)
-        # side_length = int(np.ceil(np.sqrt(num_stations)))  # Number of nodes along one side of the square
-        
-        # # Determine the step size to spread nodes evenly in the square
-        # step = 2 / (side_length - 1)
-        
-        # # Generate positions for each node
-        # pos = {stations[i]: ((i % side_length) * step - 1, (i // side_length) * step - 1) for i in range(num_stations)}
         
         # Add nodes
         for station in stations:
