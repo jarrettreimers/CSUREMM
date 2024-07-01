@@ -9,6 +9,8 @@ class StationCluster:
                  curr_bikes: int,
                  rate: dict[int: float],
                  transition: dict[int: [dict[str: float]]],
+                 lat: float,
+                 lon: float,
                  ):
         self.name = name
         self.neighbors_dist = neighbors_dist
@@ -21,6 +23,8 @@ class StationCluster:
         self.transition = transition
         self.bad_arrivals = []
         self.bad_departures = []
+        self.lat = lat
+        self.lon = lon
 
     def get_bike(self, trip: Trip) -> bool:
         if not self.empty:
