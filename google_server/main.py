@@ -1,6 +1,6 @@
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 import urllib.request, simplejson
 from flask import Flask
 
@@ -12,7 +12,7 @@ def hello_world():
     now = datetime.now()
     while now.minute % 5 != 0:
         time.sleep(60)
-        now = datetime
+        now = datetime.now()
     station_status = simplejson.load(
         urllib.request.urlopen('https://gbfs.lyft.com/gbfs/2.3/bkn/en/station_status.json'))
     with open(f'data/{now.strftime("%Y-%m-%d-%H-%M")}.pickle', 'w') as f:

@@ -129,23 +129,24 @@ class ClusterModel:
             if destination not in self.cluster_dict:
                 print(destination, 'Destination not in cluster_dict')
                 continue
+            trip = Trip(start_cluster=cluster.name,
+                        end_cluster=destination,
+                        start_time=self.curr_time,
+                        trip_time=self.get_dist(cluster.name, destination))
             if self.cluster_dict[destination].full:
                 self.failures += 1
+                self.cluster_dict[destination].bad_arrivals.append(trip)
                 # print('Failure to arrive at ', station_name)
                 destination = self.get_new_cluster(cluster=destination, method='arrival')
             if destination < 0:
                 self.critical_failures += 1
                 continue
-            trip = Trip(start_cluster=cluster.name,
-                        end_cluster=destination,
-                        start_time=self.curr_time,
-                        trip_time=self.get_dist(cluster.name, destination))
             if not cluster.get_bike(trip):
                 self.failures += 1
                 # print('Failure to depart from ', station_name)
                 new_departure_pt = self.get_new_cluster(cluster.name, method='departure')
                 # print('Failure rerouted to: ', new_departure_pt)
-                if new_departure_pt >= 0 and self.cluster_dict[new_departure_pt].get_bike(trip):
+                if not new_departure_pt < 0 and self.cluster_dict[new_departure_pt].get_bike(trip):
                     # print(new_departure_pt, ' has a bike to use')
                     trip.start_station = new_departure_pt
                     transit.append(trip)
