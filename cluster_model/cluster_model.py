@@ -400,3 +400,25 @@ class ClusterModel:
         if save:
             plt.savefig('images/fill/' + name + '.png')
         return fig
+
+    def show_failures(self, save=False, name=None) -> sns.heatmap:
+        plt.close()
+        failures = []
+        for i in range(len(self.clusters)):
+            if i in self.cluster_dict:
+                failures.append(len(self.cluster_dict[i].bad_arrivals) + len(self.cluster_dict[i].bad_departures))
+            else:
+                failures.append(0)
+        failures = np.array(failures).reshape((self.vertical_squares, self.horizontal_squares))
+        fig = sns.heatmap(failures, cmap='Reds')
+        plt.title(str(self.curr_time))
+        if not name:
+            name = str(self.curr_time.total_seconds())
+        if save:
+            plt.savefig('images/failures/' + name + '.png')
+        return fig
+
+    def reset_failures(self):
+        for cluster in self.cluster_dict.values():
+            cluster.bad_arrivals = []
+            cluster.bad_departures = []
