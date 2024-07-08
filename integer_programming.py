@@ -120,7 +120,7 @@ def create_model(T, K, L, stations, start_levels, optimal_levels, positions, nei
     
     return model, x, y, b
 
-def graph_model(x, b, K, T, stations, positions):
+def graph_model(x, b, K, T, stations, positions, node_size = 20, title = "Overnight Rebalancing"):
     '''
     graphs the solution that was computed in using the function create_model
 
@@ -145,42 +145,36 @@ def graph_model(x, b, K, T, stations, positions):
     else:
         print("No optimal solution found.")
     
+    G = nx.DiGraph()
     
-    # Visualize the truck paths
-    def plot_paths(truck_paths):
-        G = nx.DiGraph()
-        
-        # Add nodes
-        for station in stations:
-            G.add_node(station)
-        
-        # Add edges with arrows for each truck path
-        for k, path in truck_paths.items():
-            for i in range(len(path) - 1):
-                t1, s1 = path[i][:2]
-                t2, s2 = path[i + 1][:2]
-                G.add_edge(s1, s2, truck=k, time_step=t1)
-        
-        edge_colors = ['blue', 'red', 'green', 'purple']  # Different colors for different trucks
-        # edge_styles = ['solid', 'dashed']  # Different styles for different trucks
-        
-        plt.figure(figsize=(10, 8))
-        for k, path in truck_paths.items():
-            # edges = [(path[i][1], path[i + 1][1]) for i in range(len(path) - 1)]
-            # The above includes time steps where the trucks don't move. Below I have removed such trips
-            edges = [(path[i][1], path[i + 1][1]) for i in range(len(path) - 1) if path[i][1] != path[i + 1][1]]
-            nx.draw_networkx_edges(G, positions, edgelist=edges, arrowstyle='->', arrowsize=15, 
-                                   edge_color=edge_colors[k - 1], style='dashed', label=f'Truck {k}')
-        
-        nx.draw_networkx_nodes(G, positions, node_size=500, node_color='lightgray')
-        nx.draw_networkx_labels(G, positions, font_size=10)
+    # Add nodes
+    for station in stations:
+        G.add_node(station)
     
-        from matplotlib.lines import Line2D
-        legend_handles = [Line2D([0], [0], color=edge_colors[k - 1], lw=2, label=f'Truck {k}') for k in range(1, K+1)]
-        plt.legend(handles=legend_handles)
-        
-        plt.title("Truck Paths")
-        plt.show()
+    # Add edges with arrows for each truck path
+    for k, path in truck_paths.items():
+        for i in range(len(path) - 1):
+            t1, s1 = path[i][:2]
+            t2, s2 = path[i + 1][:2]
+            G.add_edge(s1, s2, truck=k, time_step=t1)
     
-    # Plot the paths
-    plot_paths(truck_paths)
+    edge_colors = ['blue', 'red', 'green', 'purple']  # Different colors for different trucks
+    
+    plt.figure(figsize=(10, 8))
+    for k, path in truck_paths.items():
+        # edges = [(path[i][1], path[i + 1][1]) for i in range(len(path) - 1)]
+        # The above includes time steps where the trucks don't move. Below I have removed such trips
+        edges = [(path[i][1], path[i + 1][1]) for i in range(len(path) - 1) if path[i][1] != path[i + 1][1]]
+        nx.draw_networkx_edges(G, positions, edgelist=edges, arrowstyle='->', arrowsize=15, 
+                               edge_color=edge_colors[k - 1], style='dashed', label=f'Truck {k}')
+    
+    nx.draw_networkx_nodes(G, positions, node_size= node_size, node_color='lightgray')
+    # If we want to add labels we can
+    # nx.draw_networkx_labels(G, positions, font_size=10)
+
+    from matplotlib.lines import Line2D
+    legend_handles = [Line2D([0], [0], color=edge_colors[k - 1], lw=2, label=f'Truck {k}') for k in range(1, K+1)]
+    plt.legend(handles=legend_handles)
+    
+    plt.title(title)
+    plt.show()
