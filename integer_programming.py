@@ -5,6 +5,19 @@ import matplotlib.pyplot as plt
 import networkx as nx
 
 def create_model(T, K, L, stations, start_levels, optimal_levels, positions, neighbors):
+    '''
+    creates AND optimizes the model for integer programming. solves for the truck routes that get the stations closest to optimal levels
+    
+    T: int, total time steps
+    K: int, total number of trucks
+    L: int, max number of bikes a truck can hold
+    
+    stations: list of the stations/clusters (in my testing i've made this a list of strings, but list of cluster objects should work)
+    start_levels: dict, stations --> int, number of bikes at each station/cluster before overnight rebalancing
+    optimal_levels: dict, stations --> int, optimal number of bikes after overnight rebalancing
+    positions: dict, stations --> tuple, the coordinates of each stations/cluster
+    neighbors: dict, stations --> list of stations, maps each station/cluster to a list of stations/clusters that can be moved to in 1 time step
+    '''
     over_stations, under_stations, balanced_stations = [], [], []
     # Fill over and under stations
     for station in stations:
@@ -108,6 +121,14 @@ def create_model(T, K, L, stations, start_levels, optimal_levels, positions, nei
     return model, x, y, b
 
 def graph_model(x, b, K, T, stations, positions):
+    '''
+    graphs the solution that was computed in using the function create_model
+
+    x: the x variable from create_model, which tracks the position of each truck
+    b: b variable from create_model, tracks number of bikes in each truck at each time step
+
+    K, T, stations, positions all same as in create_model
+    '''
     truck_paths = {}
     
     # if model.status == GRB.OPTIMAL:
