@@ -54,6 +54,8 @@ class ClusterModel:
                 # park the bike
                 end_cluster = trip.end_cluster  # int reference to cluster
                 if not self.cluster_dict[end_cluster].return_bike(trip):  # if there is no room...
+                    # print('Bad arrival at ', end_cluster, self.cluster_dict[end_cluster].curr_bikes,
+                    #       self.cluster_dict[end_cluster].max_docks, self.cluster_dict[end_cluster].full)
                     # print('Failure to dock')
                     self.failures += 1
                     new_destination = self.get_new_cluster(cluster=end_cluster, method='arrival')
@@ -169,6 +171,8 @@ class ClusterModel:
     def get_new_cluster(self, cluster: int, method='arrival') -> int:
         nearest_neighbors = self.cluster_dict[cluster].nearest_neighbors
         random_range = [i for i in range(4)]
+        if len(random_range) > len(nearest_neighbors):
+            random_range = random_range[:len(nearest_neighbors)]
         random.shuffle(random_range)
         for num in random_range:
             neighbor = nearest_neighbors[num]
@@ -194,6 +198,8 @@ class ClusterModel:
             num_bikes = df.loc[df['name'] == station]['num_bikes_available'].values[0]
             self.cluster_dict[self.station_clusters[station]].curr_bikes += num_bikes
         self.fix_max_docks()
+        for cluster in self.cluster_dict.values():
+            cluster.update()
 
     def fix_max_docks(self):
         for cluster in self.cluster_dict.values():
@@ -213,13 +219,24 @@ class ClusterModel:
             error += (cluster_dict[cluster].curr_bikes - other_clusters[cluster]) ** 2
         return error / len(cluster_dict)
 
+    def load_bikes(self, bikes_in_clusters: dict[int: int]):
+        if len(bikes_in_clusters) != len(self.cluster_dict):
+            print('Incorrect number of clusters')
+            return
+        for i in bikes_in_clusters:
+            if i not in self.cluster_dict:
+                print(i, 'not in cluster_dict')
+                continue
+            self.cluster_dict[i].curr_bikes = bikes_in_clusters[i]
+            self.cluster_dict[i].update()
+
     def get_state(self, path: str):
         df = pd.read_csv(path)
-        other_clusters = {i: 0 for i in range(len(self.clusters))}
+        other_clusters = {i: 0 for i in self.cluster_dict}
         for i, cluster in zip(range(len(self.clusters)), self.clusters):
             for station in cluster:
                 if station not in df['name'].values:
-                    print(station, 'not in df')
+                    # print(station, 'not in df')
                     continue
                 other_clusters[i] += df.loc[df['name'] == station]['num_bikes_available'].values[0]
         return other_clusters
@@ -423,3 +440,34 @@ class ClusterModel:
         for cluster in self.cluster_dict.values():
             cluster.bad_arrivals = []
             cluster.bad_departures = []
+
+    def reset_state(self, bike_state: dict[int: int], in_transit: List[Trip], time: timedelta):
+        for i in bike_state:
+            self.cluster_dict[i].curr_bikes = bike_state[i]
+            self.cluster_dict[i].update()
+        self.in_transit = in_transit
+        self.change_time(time)
+        self.reset_failures()
+        self.failures = 0
+        self.total_trips = 0
+        self.critical_failures = 0
+
+    def get_adjacent_clusters(self) -> dict[int: list[int]]:
+        adjacent_clusters = {}
+        for cluster in self.cluster_dict:
+            adjacent_cluster = []
+            if cluster % self.horizontal_squares != 0:
+                if cluster - 1 in self.cluster_dict:
+                    adjacent_cluster.append(cluster - 1)
+            if cluster > self.horizontal_squares:
+                if cluster - self.horizontal_squares in self.cluster_dict:
+                    adjacent_cluster.append(cluster - self.horizontal_squares)
+            if cluster % self.horizontal_squares - 1 != 0:
+                if cluster + 1 in self.cluster_dict:
+                    adjacent_cluster.append(cluster + 1)
+            if cluster > self.horizontal_squares * (self.vertical_squares - 1):
+                if cluster + self.horizontal_squares in self.cluster_dict:
+                    adjacent_cluster.append(cluster + self.horizontal_squares)
+            adjacent_clusters[cluster] = adjacent_cluster
+        return adjacent_clusters
+
