@@ -15,7 +15,7 @@ def create_model(T, K, L, stations, start_levels, optimal_levels, positions, nei
     stations: list of the stations/clusters (in my testing i've made this a list of strings, but list of cluster objects should work)
     start_levels: dict, stations --> int, number of bikes at each station/cluster before overnight rebalancing
     optimal_levels: dict, stations --> int, optimal number of bikes after overnight rebalancing
-    positions: dict, stations --> tuple, the coordinates of each stations/cluster
+    positions: dict, stations --> tuple (lon, lat) of the coordinates of each stations/cluster
     neighbors: dict, stations --> list of stations, maps each station/cluster to a list of stations/clusters that can be moved to in 1 time step
     '''
     over_stations, under_stations, balanced_stations = [], [], []
@@ -71,10 +71,10 @@ def create_model(T, K, L, stations, start_levels, optimal_levels, positions, nei
     # Constraint 4 & 5: rebalancing can only bring a station closer to optimal level
     for t in range(1, T+1):
         for s in over_stations:
-            model.addConstr(optimal_levels[s] <= sum(y[s, t, k] for k in range(1, K+1)))
+            # model.addConstr(optimal_levels[s] <= sum(y[s, t, k] for k in range(1, K+1)))
             model.addConstr(sum(y[s, t, k] for k in range(1, K+1)) <= start_levels[s])
         for s in under_stations:
-            model.addConstr(start_levels[s] <= sum(y[s, t, k] for k in range(1, K+1)))
+            # model.addConstr(start_levels[s] <= sum(y[s, t, k] for k in range(1, K+1)))
             model.addConstr(sum(y[s, t, k] for k in range(1, K+1)) <= optimal_levels[s])
         for s in balanced_stations:
             model.addConstr(sum(y[s, t, k] for k in range(1, K+1)) == start_levels[s])
@@ -178,3 +178,4 @@ def graph_model(x, b, K, T, stations, positions, node_size = 20, title = "Overni
     
     plt.title(title)
     plt.show()
+    return truck_paths

@@ -284,7 +284,7 @@ class ClusterModel:
         # Create a tuple of the lat, lon centroid for each cluster
         lat = lat_max - square_length / 2
         for i in range(self.vertical_squares):
-            lon = lat_min + square_length / 2
+            lon = lon_min + square_length / 2
             for j in range(self.horizontal_squares):
                 self.clusters_lat_lon.append((lat, lon))
                 lon += square_length
@@ -459,15 +459,19 @@ class ClusterModel:
             if cluster % self.horizontal_squares != 0:
                 if cluster - 1 in self.cluster_dict:
                     adjacent_cluster.append(cluster - 1)
+
             if cluster > self.horizontal_squares:
                 if cluster - self.horizontal_squares in self.cluster_dict:
                     adjacent_cluster.append(cluster - self.horizontal_squares)
+
             if cluster % self.horizontal_squares - 1 != 0:
                 if cluster + 1 in self.cluster_dict:
                     adjacent_cluster.append(cluster + 1)
-            if cluster > self.horizontal_squares * (self.vertical_squares - 1):
+
+            if cluster < self.horizontal_squares * (self.vertical_squares - 1):
                 if cluster + self.horizontal_squares in self.cluster_dict:
                     adjacent_cluster.append(cluster + self.horizontal_squares)
+
             adjacent_clusters[cluster] = adjacent_cluster
         return adjacent_clusters
 
