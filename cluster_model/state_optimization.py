@@ -21,13 +21,20 @@ class StateOptimization:
             self.model.reset_state(bike_state=opt_state, in_transit=origin_in_transit, time=origin_time)
             while self.model.curr_time < end_time:
                 self.model.sim()
-            opt_state = {i: opt_state[i] + len(self.model.cluster_dict[i].bad_departures) -
-                            len(self.model.cluster_dict[i].bad_arrivals) for i in self.model.cluster_dict}
+            for i in self.model.cluster_dict:
+                sign = 1
+                change = len(self.model.cluster_dict[i].bad_departures) - len(self.model.cluster_dict[i].bad_arrivals)
+                if change < 0:
+                    sign = -1
+
+                opt_state[i] += (abs(change) ** ((steps - step / 2) / steps) * sign)
+
             for i in opt_state:
                 if opt_state[i] < 0:
                     opt_state[i] = 0
                 if opt_state[i] > self.model.cluster_dict[i].max_docks:
                     opt_state[i] = self.model.cluster_dict[i].max_docks
+            print('Step', step + 1, 'of', steps, 'completed', self.model.failures, 'failures')
         self.model.reset_state(bike_state=origin_bike_state, in_transit=origin_in_transit, time=origin_time)
         return opt_state
 
