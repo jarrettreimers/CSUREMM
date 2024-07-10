@@ -201,6 +201,20 @@ class ClusterModel:
         for cluster in self.cluster_dict.values():
             cluster.update()
 
+    def init_df_state(self, df: pd.DataFrame, time=None):
+        if time:
+            self.change_time(time)
+        for cluster in self.cluster_dict.values():
+            cluster.curr_bikes = 0
+        for station in self.station_data:
+            if station not in df['name'].values:
+                continue
+            num_bikes = df.loc[df['name'] == station]['num_bikes_available'].values[0]
+            self.cluster_dict[self.station_clusters[station]].curr_bikes += num_bikes
+        self.fix_max_docks()
+        for cluster in self.cluster_dict.values():
+            cluster.update()
+
     def fix_max_docks(self):
         for cluster in self.cluster_dict.values():
             if cluster.curr_bikes > cluster.max_docks:
@@ -408,15 +422,17 @@ class ClusterModel:
         num_docks[num_docks == 0] = 1
         return num_bikes / num_docks
 
-    def show_fill_percent(self, save=False, name=None) -> sns.heatmap:
+    def show_fill_percent(self, save=False, name=None, folder=None) -> sns.heatmap:
         plt.close()
         fill = self.get_fill_percent()
         fig = sns.heatmap(fill, cmap='Reds', vmin=0, vmax=1)
         plt.title(str(self.curr_time))
         if not name:
             name = str(self.curr_time.total_seconds())
+        if not folder:
+            folder = 'images/fill/'
         if save:
-            plt.savefig('images/fill/' + name + '.png')
+            plt.savefig(folder + name + '.png')
         return fig
 
     def show_failures(self, save=False, name=None) -> sns.heatmap:

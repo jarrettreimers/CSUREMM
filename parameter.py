@@ -6,8 +6,7 @@ import pandas as pd
 import numpy as np
 import query
 import pickle
-from station import Station
-
+from old_model.station import Station
 
 
 def cut(df: pd.DataFrame, start_time: datetime, stop_time: datetime, length: timedelta) \
@@ -165,6 +164,37 @@ def get_pickle_station(station: str, path: str) -> Station:
                    curr_bikes=station_data['curr_bikes'],
                    lat=station_data['lat'],
                    lon=station_data['lon'])
+
+def get_state_df(station_information: list[dict[str: str]], path: str):
+    with open(path, 'r') as f:
+        station_status = simplejson.load(f)
+
+    flat_data = []
+    for station in station_information:
+        for station_stat in station_status['data']['stations']:
+            if station['station_id'] == station_stat['station_id']:
+                region_id = None
+                if 'region_id' in station:
+                    region_id = station['region_id']
+                flat_station = {
+                    'name': station['name'],
+                    'capacity': station['capacity'],
+                    'station_id': station['station_id'],
+                    'short_name': station['short_name'],
+                    'region_id': region_id,
+                    'lat': station['lat'],
+                    'lon': station['lon'],
+                    'num_bikes_available': station_stat['num_bikes_available'],
+                    'num_bikes_disabled': station_stat['num_bikes_disabled'],
+                    'num_docks_available': station_stat['num_docks_available'],
+                    'num_docks_disabled': station_stat['num_docks_disabled'],
+                    'operating': station_stat['is_renting'] and station_stat['is_returning'] and station_stat[
+                        'is_installed'],
+                }
+                flat_data.append(flat_station)
+                break
+    df = pd.DataFrame(flat_data)
+    return df
 
 
 def get_station_information(save=False):

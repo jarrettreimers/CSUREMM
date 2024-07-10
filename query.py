@@ -1,7 +1,7 @@
 import time
 import pandas as pd
 import datetime
-from station import Station
+from old_model.station import Station
 
 
 def get_datetime(year, month, day, hour, minute, second) -> datetime.datetime:
