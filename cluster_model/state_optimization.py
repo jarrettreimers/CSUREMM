@@ -26,9 +26,7 @@ class StateOptimization:
                 change = len(self.model.cluster_dict[i].bad_departures) - len(self.model.cluster_dict[i].bad_arrivals)
                 if change < 0:
                     sign = -1
-
-                opt_state[i] += (abs(change) ** ((steps - step / 2) / steps) * sign)
-
+                opt_state[i] += int(abs(change) ** ((steps - step / 2) / steps) * sign)
             for i in opt_state:
                 if opt_state[i] < 0:
                     opt_state[i] = 0
@@ -54,3 +52,4 @@ class StateOptimization:
             expected_change += np.matmul(transition_matrix, rate_vector) - rate_vector
 
         return {cluster.name: expected_change[i] for i, cluster in enumerate(clusters)}
+
