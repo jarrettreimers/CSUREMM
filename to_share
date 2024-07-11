@@ -1,0 +1,31 @@
+print('TRUCK REPORTS:')
+for k in range(1, K+1):
+    print('\n\nTRUCK {}\n'.format(k))
+    truck_data = truck_paths[k]
+    increase_dict = {}
+    decrease_dict = {}
+    for i in range(0, len(truck_data)-1):
+        if truck_data[i][1] != truck_data[i+1][1]:
+            print('time {}: traveled from {} to {}'.format(truck_data[i][0],truck_data[i][1], truck_data[i+1][1]))
+        if truck_data[i][2] > truck_data[i+1][2]:
+            print('time {}: dropped off {} bikes at {}'.format(truck_data[i][0],
+                                                           int(truck_data[i][2][0]) - int(truck_data[i+1][2][0]), truck_data[i][1]))
+            if truck_data[i][1] in increase_dict.keys():
+                increase_dict[truck_data[i][1]] += int(truck_data[i][2][0]) - int(truck_data[i+1][2][0])
+            else:
+                increase_dict[truck_data[i][1]] = int(truck_data[i][2][0]) - int(truck_data[i+1][2][0])
+        if truck_data[i][2] < truck_data[i+1][2]:
+            print('time {}: picked up {} bikes at {}'.format(truck_data[i][0],
+                                                           int(truck_data[i+1][2][0]) - int(truck_data[i][2][0]), truck_data[i][1]))
+            if truck_data[i][1] in decrease_dict.keys():
+                    decrease_dict[truck_data[i][1]] += int(truck_data[i+1][2][0]) - int(truck_data[i][2][0])
+            else:
+                decrease_dict[truck_data[i][1]] = int(truck_data[i+1][2][0]) - int(truck_data[i][2][0])
+                
+    print('\nOVERALL IMPACT\n')
+    for cluster in increase_dict:
+        print('increased {} by {} bikes'.format(cluster, increase_dict[cluster]))
+    
+    for cluster in decrease_dict:
+        print('decreased {} by {} bikes'.format(cluster, decrease_dict[cluster]))
+    
