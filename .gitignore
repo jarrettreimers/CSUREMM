@@ -3,3 +3,4 @@ venv/
 images/
 cluster_model/images/
 cluster_model/gifs/
+cluster_model/rebalancing/

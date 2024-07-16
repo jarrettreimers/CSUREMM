@@ -422,11 +422,14 @@ class ClusterModel:
         num_docks[num_docks == 0] = 1
         return num_bikes / num_docks
 
-    def show_fill_percent(self, save=False, name=None, folder=None) -> sns.heatmap:
+    def show_fill_percent(self, save=False, name=None, folder=None, title=None) -> sns.heatmap:
         plt.close()
         fill = self.get_fill_percent()
         fig = sns.heatmap(fill, cmap='Reds', vmin=0, vmax=1)
-        plt.title(str(self.curr_time))
+        if title:
+            plt.title(str(self.curr_time) + ' ' + title)
+        else:
+            plt.title(str(self.curr_time))
         if not name:
             name = str(self.curr_time.total_seconds())
         if not folder:

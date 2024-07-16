@@ -7,7 +7,7 @@ class StateOptimization:
     def __init__(self, model: ClusterModel):
         self.model = model
 
-    def optimize(self, length: timedelta, steps=1, time=None, path=None):
+    def optimize(self, length: timedelta, steps=1, min=2, time=None, path=None):
         if path:
             if not time:
                 print("Time must be specified if path is specified")
@@ -26,7 +26,7 @@ class StateOptimization:
                 change = len(self.model.cluster_dict[i].bad_departures) - len(self.model.cluster_dict[i].bad_arrivals)
                 if change < 0:
                     sign = -1
-                opt_state[i] += int(abs(change) ** ((steps - step / 2) / steps) * sign)
+                opt_state[i] += int(abs(change) ** ((min*steps - step) / (min * steps))) * sign
             for i in opt_state:
                 if opt_state[i] < 0:
                     opt_state[i] = 0
