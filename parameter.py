@@ -173,15 +173,10 @@ def get_state_df(station_information: list[dict[str: str]], path: str):
     for station in station_information:
         for station_stat in station_status['data']['stations']:
             if station['station_id'] == station_stat['station_id']:
-                region_id = None
-                if 'region_id' in station:
-                    region_id = station['region_id']
                 flat_station = {
                     'name': station['name'],
                     'capacity': station['capacity'],
                     'station_id': station['station_id'],
-                    'short_name': station['short_name'],
-                    'region_id': region_id,
                     'lat': station['lat'],
                     'lon': station['lon'],
                     'num_bikes_available': station_stat['num_bikes_available'],

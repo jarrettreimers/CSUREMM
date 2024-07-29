@@ -5,6 +5,8 @@ from typing import List
 import matplotlib.pyplot as plt
 import seaborn as sns
 from math import floor
+
+import simplejson
 from numpy.random import poisson, choice
 import pandas as pd
 import numpy as np
@@ -13,14 +15,12 @@ from trip import Trip
 
 
 class ClusterModel:
-    def __init__(self,
-                 station_data: dict[str: dict[str: float]],
-                 in_transit: List[Trip],
-                 tph: int
-                 ):
+    def __init__(self, station_data: dict[str: dict[str: float]], in_transit=None, square_length=0.005):
+        if in_transit is None:
+            in_transit = []
         self.cluster_dict = {}  # {cluster_name (int) : StationCluster}
         self.in_transit = in_transit  # List of Trip objects
-        self.tph = tph  # Ticks per hour (int) must divide 60
+        self.tph = 4  # Ticks per hour (int) must divide 60
         self.curr_tick = 0  # Current tick in the day
         self.curr_time = timedelta(hours=0)  # Current time in the day
         self.failures = 0  # Number of failed trips (includes rerouting)
@@ -33,9 +33,22 @@ class ClusterModel:
         # {lat (float), lon (float), max_docks (int), curr_bikes (int), rate (dict{int: int}),
         # transition (dict{int: dict{str: float}})}
         self.station_clusters = {}  # {station_name (str) : cluster_name (int)}
+        self.station_information = {}
+        self.station_id_to_name = {}
         self.horizontal_squares = 0  # Number of horizontal squares
         self.vertical_squares = 0  # Number of vertical squares
         self.square_length = 0  # Length of each square in lat/lon
+        self.init_station_info()
+        self.init_clusters(square_length)
+
+    def init_station_info(self):
+        try:
+            with open('../station_information.json', 'r') as f:
+                self.station_information = simplejson.load(f)['data']['stations']
+            self.station_id_to_name = {station['station_id']: station['name'] for station in
+                                       self.station_information}
+        except FileNotFoundError:
+            print('station information not found, save station_information.json to model directory')
 
     def sim(self):
         self.curr_tick += 1
@@ -186,20 +199,32 @@ class ClusterModel:
         self.curr_time = time
         self.curr_tick = int((time.total_seconds() * self.tph) / 3600)
 
-    def init_state(self, path: str, time=None):
+    def init_state(self, path: str, time=None, flag=False):
+        station_info_flag = False
+        station_data_flag = False
         if time:
             self.change_time(time)
-        df = pd.read_csv(path)
+        with open(path, 'r') as f:
+            station_state = simplejson.load(f)['data']['stations']
         for cluster in self.cluster_dict.values():
             cluster.curr_bikes = 0
-        for station in self.station_data:
-            if station not in df['name'].values:
+        for station in station_state:
+            if station['station_id'] not in self.station_id_to_name:
+                station_info_flag = True
                 continue
-            num_bikes = df.loc[df['name'] == station]['num_bikes_available'].values[0]
-            self.cluster_dict[self.station_clusters[station]].curr_bikes += num_bikes
+            station_name = self.station_id_to_name[station['station_id']]
+            if station_name not in self.station_data:
+                station_data_flag = True
+                continue
+            self.cluster_dict[self.station_clusters[station_name]].curr_bikes += station['num_bikes_available']
         self.fix_max_docks()
         for cluster in self.cluster_dict.values():
             cluster.update()
+
+        if station_data_flag and flag:
+            print('Please update your station data')
+        if station_info_flag and flag:
+            print('Please update your station information')
 
     def init_df_state(self, df: pd.DataFrame, time=None):
         if time:
@@ -216,9 +241,14 @@ class ClusterModel:
             cluster.update()
 
     def fix_max_docks(self):
+        remove = []
         for cluster in self.cluster_dict.values():
             if cluster.curr_bikes > cluster.max_docks:
                 cluster.max_docks = cluster.curr_bikes
+            if cluster.max_docks == 0:
+                remove.append(cluster.name)
+        for cluster in remove:
+            del self.cluster_dict[cluster]
 
     def mean_sq_error(self, cluster_dict=None, other_clusters=None, path=None):
         if other_clusters is None and path is None:
@@ -309,7 +339,6 @@ class ClusterModel:
     def init_clusters(self, square_length=0.005):
         if not self.clusters:
             self.cluster_stations(square_length)
-            self.station_clusters = {station: i for i in range(len(self.clusters)) for station in self.clusters[i]}
         if not self.station_clusters:
             self.station_clusters = {station: i for i in range(len(self.clusters)) for station in self.clusters[i]}
         for i, cluster in zip(range(len(self.clusters)), self.clusters):
@@ -493,4 +522,3 @@ class ClusterModel:
 
             adjacent_clusters[cluster] = adjacent_cluster
         return adjacent_clusters
-
